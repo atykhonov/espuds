@@ -82,21 +82,25 @@
 
 ;;;; Definitions
 
-(Given "^\\(?:I am in buffer\\|I switch to buffer\\) \"\\(.+\\)\"$"
-  "Switches to BUFFER."
-  (lambda (buffer)
-    (if (s-matches? "\\s-" buffer)
-        (switch-to-buffer buffer)
-      (let ((v (vconcat [?\C-x ?b] (string-to-vector buffer))))
-        (execute-kbd-macro v)))))
+;; (Given "^\\(?:I am in buffer\\|I switch to buffer\\) BUFFER-NAME$")
 
-(Then "^I should be in buffer \"\\(.+\\)\"$"
+(defun espuds-switch-to-buffer (buffer)
+  "Switches to BUFFER."
+  (if (s-matches? "\\s-" buffer)
+      (switch-to-buffer buffer)
+    (let ((v (vconcat [?\C-x ?b] (string-to-vector buffer))))
+      (execute-kbd-macro v))))
+
+(Given "I am in buffer :arg-1" 'espuds-switch-to-buffer)
+(Given "I switch to buffer :arg-1" 'espuds-switch-to-buffer)
+
+(Then "I should be in buffer :arg-1"
   "Asserts that the current buffer is BUFFER."
   (lambda (buffer)
     (let ((message "Expected to be in buffer '%s', but was in '%s'"))
       (cl-assert (equal buffer (buffer-name)) nil message buffer (buffer-name)))))
 
-(Then "^I should be in file \"\\(.+\\)\"$"
+(Then "I should be in file :arg-1"
   "Asserts that the current buffer is connected to FILE."
   (lambda (file)
     (let ((file-name (buffer-file-name)))
@@ -105,12 +109,15 @@
             (cl-assert match nil "Expected file to be '%s', but was '%s'." file file-name))
         (cl-assert file-name nil "Expected file to be '%s', but not visiting any file." file)))))
 
-(Given "^the buffer is empty$\\|^I clear the buffer$"
+(Given "the buffer is empty"
   "Clears all text in the current buffer."
-  (lambda ()
-    (erase-buffer)))
+  'erase-buffer)
 
-(When "^I go to line \"\\([0-9]+\\)\"$"
+(Given "I clear the buffer"
+  "Clears all text in the current buffer."
+  'erase-buffer)
+
+(When "I go to line :arg-1"
   "Goes to LINE if it exist."
  (lambda (line)
    (let ((num-lines (count-lines (point-min) (point-max)))
@@ -119,7 +126,7 @@
      (cl-assert (<= line-num num-lines) nil message line num-lines)
      (espuds-goto-line line-num))))
 
-(When "^I go to point \"\\([0-9]+\\)\"$"
+(When "I go to point :arg-1"
   "Goes to POINT if it exist."
  (lambda (point)
    (let ((size (buffer-size))
@@ -128,7 +135,7 @@
      (cl-assert (<= (1- point-num) size) nil message point-num size)
      (goto-char point-num))))
 
-(When "^I go to word \"\\(.+\\)\"$"
+(When "I go to word :arg-1"
   "Go to WORD if it exist."
   (lambda (word)
     (goto-char (point-min))
@@ -137,13 +144,13 @@
       (cl-assert search nil message word (buffer-string)))
     (backward-char (length word))))
 
-(Then "^the cursor should be at point \"\\(.+\\)\"$"
+(Then "the cursor should be at point :arg-1"
   "Checks that the cursor is at a specific position."
   (lambda (point)
     (let ((message "Expected cursor to be at point '%s', but was at '%s'"))
       (cl-assert (= (string-to-number point) (point)) nil message point (point)))))
 
-(Then "^the cursor should be before \"\\(.+\\)\"$"
+(Then "the cursor should be before :arg-1"
   "Checks that the cursor is before some text."
   (lambda (expected)
     (let ((actual
@@ -152,7 +159,7 @@
           (message "Expected '%s' to be before point but was '%s'."))
       (cl-assert (looking-at (regexp-quote expected)) nil message expected actual))))
 
-(Then "^the cursor should be after \"\\(.+\\)\"$"
+(Then "the cursor should be after :arg-1"
   "Checks that the cursor is after some text."
   (lambda (expected)
     (let ((actual
@@ -161,7 +168,7 @@
           (message "Expected '%s' to be after point but was '%s'."))
       (cl-assert (looking-back (regexp-quote expected)) nil message expected actual))))
 
-(Then "^the cursor should be between \"\\(.+\\)\" and \"\\(.+\\)\"$"
+(Then "the cursor should be between :arg-1 and :arg-2"
   "Checks that the cursor is between some text."
   (lambda (left right)
     (let ((search
@@ -179,7 +186,7 @@
             (min (point-max) (+ (point) 5)))))
       (cl-assert search nil message left right before after))))
 
-(When "^I place the cursor between \"\\(.+\\)\" and \"\\(.+\\)\"$"
+(When "I place the cursor between :arg-1 and :arg-2"
   "Places the cursor between text."
   (lambda (left right)
     (goto-char (point-min))
@@ -188,7 +195,7 @@
       (cl-assert search nil message left right (buffer-string)))
     (backward-char (length right))))
 
-(When "^I place the cursor before \"\\(.+\\)\"$"
+(When "I place the cursor before :arg-1"
   "Places the cursor before first instance of text."
   (lambda (arg)
     (goto-char (point-min))
@@ -197,7 +204,7 @@
       (backward-char (length arg))
       (cl-assert search nil message arg (buffer-string)))))
 
-(When "^I place the cursor after \"\\(.+\\)\"$"
+(When "I place the cursor after :arg-1"
   "Places the cursor after first instance of text."
   (lambda (arg)
     (goto-char (point-min))
@@ -205,38 +212,37 @@
           (message "Can not place cursor after '%s', because there is no such point: '%s'"))
       (cl-assert search nil message arg (buffer-string)))))
 
-(When "^I go to beginning of buffer$"
+(When "I go to beginning of buffer"
   "Places the cursor at the beginning of buffer."
   'beginning-of-buffer)
 
-(When "^I go to end of buffer$"
+(When "I go to end of buffer"
   "Places the cursor at the end of buffer."
   'end-of-buffer)
 
-(When "^I go to beginning of line$"
+(When "I go to beginning of line"
   "Places the cursor at the beginning of the line."
   (lambda ()
     (call-interactively 'move-beginning-of-line)))
 
-
-(When "^I go to end of line$"
+(When "I go to end of line"
   "Places the cursor at the end of the line."
   (lambda ()
     (call-interactively 'move-end-of-line)))
 
-(When "^I start an action chain$"
+(When "I start an action chain"
   "Starts an action chain."
   (lambda ()
     (setq espuds-action-chain nil)
     (setq espuds-chain-active t)))
 
-(When "^I execute the action chain$"
+(When "I execute the action chain"
   "Executes the action chain."
   (lambda ()
     (execute-kbd-macro espuds-action-chain)
     (setq espuds-chain-active nil)))
 
-(When "^I press \"\\(.+\\)\"$"
+(When "I press :arg-1"
   "Execute the function that KEYBINDING is bound to.
 
 Note: If action chaining is active. Add KEYBINDING to the action
@@ -256,11 +262,11 @@ chain instead of executing."
           (execute-kbd-macro macro))))
     (setq espuds-previous-keyboard-input keybinding)))
 
-(When "^I quit$"
+(When "I quit"
   "Quit without signal."
   'espuds-quit)
 
-(When "^I type \"\\(.+\\)\"$"
+(When "I type :arg-1"
   "If action chaining is active. Add TYPING to the action
 chain. Otherwise simulate the TYPING."
   (lambda (typing)
@@ -268,105 +274,118 @@ chain. Otherwise simulate the TYPING."
         (setq espuds-action-chain (vconcat espuds-action-chain (string-to-vector typing)))
       (execute-kbd-macro (string-to-vector typing)))))
 
-
-(When "^I turn on \\(.+\\)$"
+(When "I turn on :arg-1"
   "Turns on some mode."
   (lambda (mode)
     (let ((v (vconcat [?\C-u 1 ?\M-x] (string-to-vector mode))))
       (execute-kbd-macro v))))
 
-(When "^I set \\(.+\\) to \\(.+\\)$"
+(When "I set :arg-1 to :arg-2"
   "Set some variable."
   (lambda (var val)
-    (set (intern var) (read val))))
+    (set (intern var) val)))
 
-(When "^I load the following:$"
+(When "I load the following\:"
   "Loads CONTENTS with Emacs load command."
   (lambda (contents)
     (espuds-fake-eval contents)))
 
-(When "^I open temp file \"\\(.+\\)\"$"
+(When "I open temp file :arg-1"
   "Creates a new temp file called FILE and opens it."
   (lambda (file)
     (find-file (make-temp-file file))))
 
-(Then "^I should see message \"\\(.+\\)\"$"
+(Then "I should see message :arg-1"
   "Asserts that MESSAGE has been printed."
   (lambda (message)
     (let ((msg "Expected '%s' to be included in the list of printed messages, but was not."))
       (setq message (s-replace "\\\"" "\"" message))
       (cl-assert (-contains? (-map 's-trim ecukes-message-log) message) nil msg message))))
 
-(Given "^there is no region selected$"
+(Given "there is no region selected"
   "Deactivates mark."
   (lambda ()
     (deactivate-mark)))
 
-(Given "^transient mark mode is \\(active\\|inactive\\)$"
+(Given "transient mark mode active"
   "Activates transient mark mode."
   (lambda (status)
-    (transient-mark-mode
-     (if (string= status "active") 1 -1))))
+    (transient-mark-mode 1)))
 
-(When "^I set the mark$"
+(Given "transient mark mode is inactive"
+  "Deactivates transient mark mode."
+  (lambda (status)
+    (transient-mark-mode -1)))
+
+(When "I set the mark"
   "Sets the mark at point."
   (lambda ()
     (set-mark (point))))
 
-(When "^I pop the mark$"
+(When "I pop the mark"
   "Pop and move point to the top position on the mark-ring."
   (lambda ()
     (set-mark-command 4)))
 
-(Then "^the region should be\\(?: \"\\(.*\\)\"\\|:\\)$"
-  "Asserts that the selected region is same as EXPECTED."
-  (lambda (expected)
-    (let ((actual (espuds-region))
+(defun espuds-assert-region (expected)
+  (let ((actual (espuds-region))
           (message "Expected the region to be '%s', but was '%s'."))
-      (cl-assert (equal expected actual) nil message expected actual))))
+      (cl-assert (equal expected actual) nil message expected actual)))
 
-(Then "^the region should not be active$"
+(Then "the region should be\:" 'espuds-assert-region)
+(Then "the region should be :arg-1" 'espuds-assert-region)
+
+(Then "the region should not be active"
   "Asserts that the region is not active."
   (lambda ()
     (let ((message "Expected the region not to be active, but it was."))
       (cl-assert (not (region-active-p)) nil message))))
 
-(When "^I insert\\(?: \"\\(.+\\)\"\\|:\\)$"
+(defun espuds-insert-contents (contents)
   "Inserts CONTENTS into the current buffer."
-  (lambda (contents)
-    (insert contents)))
+  (insert contents))
 
-(Then "^I should see\\(?: \"\\(.+\\)\"\\|:\\)$"
+(When "I insert\:" 'espuds-insert-contents)
+(When "I insert :arg-1" 'espuds-insert-contents)
+
+(defun espuds-assert-buffer-includes-text (expected)
   "Asserts that the current buffer includes some text."
-  (lambda (expected)
-    (let ((actual (buffer-string))
-          (message "Expected '%s' to be part of '%s', but was not."))
-      (cl-assert (s-contains? expected actual) nil message expected actual))))
+  (let ((actual (buffer-string))
+        (message "Expected '%s' to be part of '%s', but was not."))
+    (cl-assert (s-contains? expected actual) nil message expected actual)))
 
-(Then "^I should not see\\(?: \"\\(.+\\)\"\\|:\\)$"
+(Then "I should see\:" 'espuds-assert-buffer-includes-text)
+(Then "I should see :arg-1" 'espuds-assert-buffer-includes-text)
+
+(defun espuds-assert-buffer-does-not-include-text (expected)
   "Asserts that the current buffer does not include some text."
-  (lambda (expected)
-    (let ((actual (buffer-string))
-          (message "Expected '%s' to not be part of '%s', but was."))
-      (cl-assert (not (s-contains? expected actual)) nil message expected actual))))
+  (let ((actual (buffer-string))
+        (message "Expected '%s' to not be part of '%s', but was."))
+    (cl-assert (not (s-contains? expected actual)) nil message expected actual)))
 
-(Then "^I should see pattern\\(?: \"\\(.+\\)\"\\|:\\)$"
+(Then "I should not see\:" 'espuds-assert-buffer-does-not-include-text)
+(Then "I should not see :arg-1" 'espuds-assert-buffer-does-not-include-text)
+
+(defun espuds-assert-buffer-matches-text (expected)
   "Asserts that the current buffer matches some text."
-  (lambda (expected)
-    (let ((actual (buffer-string))
-          (message "Expected to see pattern '%s' in '%s', but did not."))
-      (cl-assert
-       (s-matches? expected actual) nil message expected actual))))
+  (let ((actual (buffer-string))
+        (message "Expected to see pattern '%s' in '%s', but did not."))
+    (cl-assert
+     (s-matches? expected actual) nil message expected actual)))
 
-(Then "^I should not see pattern\\(?: \"\\(.+\\)\"\\|:\\)$"
-  "Asserts that the current buffer does not match some text."
-  (lambda (expected)
-    (let ((actual (buffer-string))
-          (message "Expected to not see pattern '%s' in '%s', but did."))
-      (cl-assert
-       (not (s-matches? expected actual)) nil message expected actual))))
+(Then "I should see pattern\:" 'espuds-assert-buffer-matches-text)
+(Then "I should see pattern :arg-1" 'espuds-assert-buffer-matches-text)
 
-(When "^I select \"\\(.+\\)\"$"
+(defun espuds-assert-buffer-does-not-match-text (expected)
+  (let ((actual (buffer-string))
+        (message "Expected to not see pattern '%s' in '%s', but did."))
+    (cl-assert
+     (not (s-matches? expected actual)) nil message expected actual)))
+
+(Then "I should not see pattern\:" 'espuds-assert-buffer-does-not-match-text)
+(Then "I should not see pattern :arg-1" 'espuds-assert-buffer-does-not-match-text)
+
+(When "I select :arg-1"
   "Selects TEXT if found. Otherwise signal an error."
   (lambda (text)
     (goto-char (point-min))
@@ -375,11 +394,14 @@ chain. Otherwise simulate the TYPING."
     (set-mark (point))
     (re-search-backward text)))
 
-(Then "^I should not see anything$\\|^the buffer should be empty$"
+(defun espuds-assert-buffer-empty ()
   "Asserts that there nothing to see in the current buffer."
-  (lambda ()
-    (let ((message "Expected buffer to be empty, but had content: '%s'"))
-      (cl-assert (equal (buffer-size) 0) nil message (buffer-string)))))
+  (let ((message "Expected buffer to be empty, but had content: '%s'"))
+    (cl-assert (equal (buffer-size) 0) nil message (buffer-string))))
+
+(Then "I should not see anything" 'espuds-assert-buffer-empty)
+(Then "the buffer should be empty" 'espuds-assert-buffer-empty)
+
 
 
 (provide 'espuds)
