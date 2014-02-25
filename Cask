@@ -5,5 +5,6 @@
 
 (development
  (depends-on "el-mock")
+ (depends-on "ecukes")
  (depends-on "ert-runner")
  (depends-on "dash"))

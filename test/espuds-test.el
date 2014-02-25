@@ -1,3 +1,5 @@
+(require 'ecukes)
+
 (ert-deftest given-i-am-in-buffer ()
   "Should switch to buffer."
   (with-playground
@@ -20,8 +22,8 @@
   "Should be in buffer."
   (with-playground
    (let ((buffer "foo"))
-     (Given "I switch to buffer \"%s\"" buffer)
-     (Then "I should be in buffer \"%s\"" buffer))))
+     (Given "I switch to buffer `buffer'" buffer)
+     (Then "I should be in buffer `buffer'" buffer))))
 
 (ert-deftest then-i-should-be-in-buffer-not-same ()
   "Should not be in buffer."
@@ -76,7 +78,7 @@
     (stub espuds-goto-line)
     (mock
      (error "Requested line '%s', but buffer only has '%d' line(s)." "4" 3))
-    (When "I go to line \"4\""))))
+    (When "I go to line '4"))))
 
 (ert-deftest when-i-go-to-line-exists ()
   "Should go to line when exists."
@@ -84,41 +86,39 @@
    (with-mock
     (insert "foo\nbar\nbaz")
     (mock (espuds-goto-line 2))
-    (When "I go to line \"2\""))))
+    (When "I go to line '2"))))
 
 (ert-deftest when-i-go-to-point-does-not-exist ()
   "Should not go to point when does not exist."
   (with-playground
    (with-mock
     (insert "foobarbaz")
-    (stub goto-char)
+    ;; (stub goto-char)
     (mock
      (error "Requested point '%s', but buffer only has '%d' point(s)." 11 9))
-    (When "I go to point \"11\""))))
+    (When "I go to point '11"))))
 
 (ert-deftest when-i-go-to-point-exists ()
   "Should go to point when exists."
   (with-playground
-   (with-mock
-    (insert "foobarbaz")
-    (mock (goto-char 5))
-    (When "I go to point \"5\""))))
+   (insert "foobarbaz")
+   (goto-char (point-min))
+   (should (= (point) (point-min)))
+   (When "I go to point '5")
+   (should (= (point) 5))))
 
 (ert-deftest when-i-go-to-word-does-not-exist ()
   "Should not go to word when does not exist."
   (with-playground
-   (with-mock
-    (insert "foo bar baz")
-    (stub backward-char)
-    (mock
-     (error "Can not go to word '%s' since it does not exist in the current buffer: %s" "qux" "foo bar baz"))
-    (When "I go to word \"qux\""))))
+   (insert "foo bar baz")
+   (should-error
+    (When "I go to word 'qux"))))
 
 (ert-deftest when-i-go-to-word-exists ()
   "Should go to point when exists."
   (with-playground
    (insert "foo bar baz")
-   (When "I go to word \"bar\"")
+   (When "I go to word 'bar")
    (should (equal (point) 5))))
 
 (ert-deftest then-the-cursor-should-be-at-point-does-not-exist ()
@@ -128,7 +128,7 @@
     (insert "foo bar baz")
     (mock
      (error "Expected cursor to be at point '%s', but was at '%s'" "15" 12))
-    (Then "the cursor should be at point \"15\""))))
+    (Then "the cursor should be at point '15"))))
 
 (ert-deftest then-the-cursor-should-be-at-point-exists-but-not-at-point ()
   "Should not be at point when not at point."
@@ -390,7 +390,7 @@
 (ert-deftest when-i-turn-on-major-mode ()
   "Should turn on major mode."
   (with-playground
-   (When "I turn on text-mode")
+   (When "I turn on 'text-mode")
    (should (equal major-mode 'text-mode))))
 
 (ert-deftest when-i-turn-on-minor-mode ()
@@ -398,32 +398,32 @@
   (with-playground
    (with-mock
     (stub message)
-    (When "I turn on longlines-mode"))
+    (When "I turn on 'longlines-mode"))
    (should longlines-mode)))
 
-(ert-deftest when-i-set-variable-to-symbol-value ()
+(ert-deftest when-i-set-variable-to-list-with-symbol ()
   "Should set variable to symbol value."
   (let ((variable))
-    (When "I set variable to value")
-    (should (equal variable 'value))))
+    (When "I set 'variable to '(value)")
+    (should (equal variable (list 'value)))))
 
 (ert-deftest when-i-set-variable-to-string-value ()
   "Should set variable to string value."
   (let ((variable))
-    (When "I set variable to \"value\"")
+    (When "I set 'variable to 'value")
     (should (equal variable "value"))))
 
 (ert-deftest when-i-set-variable-to-number-value ()
   "Should set variable to number value."
   (let ((variable))
-    (When "I set variable to 1")
-    (should (equal variable 1))))
+    (When "I set 'variable to '1")
+    (should (equal variable "1"))))
 
-(ert-deftest when-i-load-the-following ()
-  "Should load content."
-  (with-mock
-   (mock (espuds-fake-eval "CONTENT"))
-   (When "I load the following:" "CONTENT")))
+;; (ert-deftest when-i-load-the-following ()
+;;   "Should load content."
+;;   (with-mock
+;;    (mock (espuds-fake-eval "CONTENT"))
+;;    (When "I load the following:" "CONTENT")))
 
 (ert-deftest when-i-open-temp-file ()
   "Should open temp file."
@@ -460,9 +460,13 @@
 
 (ert-deftest given-there-is-no-region-selected ()
   "Should deactivate mark."
-  (with-mock
-   (mock (deactivate-mark))
-   (Given "there is no region selected")))
+  (should-not
+   (region-active-p))
+  (set-mark (point))
+  (activate-mark)
+  (should (region-active-p))
+  (Given "there is no region selected")
+  (should-not (region-active-p)))
 
 (ert-deftest given-transient-mark-mode-is-active ()
   "Should be active."
@@ -510,27 +514,27 @@
     (error "Expected the region to be '%s', but was '%s'." "REGION" "REG"))
    (Then "the region should be \"REGION\"")))
 
-(ert-deftest then-the-region-should-be-arg ()
-  "Should be region."
-  (with-mock
-   (stub espuds-region => "REGION")
-   (Then "the region should be:" "REGION")))
+;; (ert-deftest then-the-region-should-be-arg ()
+;;   "Should be region."
+;;   (with-mock
+;;    (stub espuds-region => "REGION")
+;;    (Then "the region should be:" "REGION")))
 
-(ert-deftest then-the-region-should-be-arg-no-region ()
-  "Should not be region when no region."
-  (with-mock
-   (stub espuds-region => "")
-   (mock
-    (error "Expected the region to be '%s', but was '%s'." "REGION" ""))
-   (Then "the region should be:" "REGION")))
+;; (ert-deftest then-the-region-should-be-arg-no-region ()
+;;   "Should not be region when no region."
+;;   (with-mock
+;;    (stub espuds-region => "")
+;;    (mock
+;;     (error "Expected the region to be '%s', but was '%s'." "REGION" ""))
+;;    (Then "the region should be:" "REGION")))
 
-(ert-deftest then-the-region-should-be-arg-wrong-region ()
-  "Should not be region when wrong region."
-  (with-mock
-   (stub espuds-region => "REG")
-   (mock
-    (error "Expected the region to be '%s', but was '%s'." "REGION" "REG"))
-   (Then "the region should be:" "REGION")))
+;; (ert-deftest then-the-region-should-be-arg-wrong-region ()
+;;   "Should not be region when wrong region."
+;;   (with-mock
+;;    (stub espuds-region => "REG")
+;;    (mock
+;;     (error "Expected the region to be '%s', but was '%s'." "REGION" "REG"))
+;;    (Then "the region should be:" "REGION")))
 
 (ert-deftest then-the-region-should-not-be-active-when-active ()
   "Should have active region."
